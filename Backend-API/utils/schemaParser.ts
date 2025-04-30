@@ -1,118 +1,138 @@
+ // Start of Selection
 import { Schema, Table, Column, Relationship } from "../types/schema";
 
 export class SchemaParser {
   async parseSchema(schemaContent: string): Promise<Schema> {
-    // Determine if the content is JSON or SQL based on the content
-    if (this.isJSON(schemaContent)) {
-      return this.parseJSONSchema(schemaContent);
-    } else {
-      return this.parseSQLSchema(schemaContent);
+    // Quick JSON check by trimming and looking for object/array start
+    const trimmed = schemaContent.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      return this.parseJSONSchema(trimmed);
     }
-  }
-
-  private isJSON(str: string): boolean {
-    try {
-      JSON.parse(str);
-      return true;
-    } catch (e) {
-      return false;
-    }
+    return this.parseSQLSchema(schemaContent);
   }
 
   private parseSQLSchema(content: string): Schema {
-    const tableRegex =
-      /CREATE TABLE IF NOT EXISTS [`"]?(\w+)[`"]? \(([\s\S]*?)\)[^;]*;/gi;
-    const columnRegex = /^\s*[`"]?(\w+)[`"]?\s+([\w()]+)(.*)$/gm;
-    const fkRegex =
-      /FOREIGN KEY \([`"]?(\w+)[`"]?\) REFERENCES [`"]?(\w+)[`"]? \([`"]?(\w+)[`"]?\)/gi;
-
     const tables: Table[] = [];
     const relationships: Relationship[] = [];
-    let match;
 
-    while ((match = tableRegex.exec(content)) !== null) {
-      const [, tableName, columnsBlock] = match;
+    // Match CREATE TABLE statements with everything inside parentheses
+    const createTableRegex =
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?([\w\d_]+)[`"]?\s*\(([\s\S]*?)\)\s*;/gi;
+    let tableMatch: RegExpExecArray | null;
+
+    while ((tableMatch = createTableRegex.exec(content)) !== null) {
+      const tableName = tableMatch[1];
+      const body = tableMatch[2];
+      const defs = this.splitSQLDefinitions(body);
       const columns: Column[] = [];
-      let colMatch;
 
-      // Parse columns
-      while ((colMatch = columnRegex.exec(columnsBlock)) !== null) {
-        const [, colName, colType, rest] = colMatch;
-        // Skip constraints lines (PRIMARY KEY, FOREIGN KEY, etc.)
-        if (
-          colName.toUpperCase() === "PRIMARY" ||
-          colName.toUpperCase() === "FOREIGN"
-        )
-          continue;
-        columns.push({ name: colName, type: colType });
-      }
+      defs.forEach((def) => {
+        const line = def.trim();
 
-      // Parse foreign keys
-      let fkMatch;
-      while ((fkMatch = fkRegex.exec(columnsBlock)) !== null) {
-        const [, sourceColumn, targetTable, targetColumn] = fkMatch;
-        relationships.push({
-          from: `${tableName}.${sourceColumn}`,
-          to: `${targetTable}.${targetColumn}`,
-          type: "foreign key",
-        });
-      }
+        // Capture table-level foreign keys
+        const fk = /FOREIGN\s+KEY\s*\([`"]?([\w\d_]+)[`"]?\)\s+REFERENCES\s+[`"]?([\w\d_]+)[`"]?\s*\([`"]?([\w\d_]+)[`"]?\)/i.exec(
+          line
+        );
+        if (fk) {
+          relationships.push({
+            from: `${tableName}.${fk[1]}`,
+            to: `${fk[2]}.${fk[3]}`,
+            type: "foreign key",
+          });
+          return;
+        }
+
+        // Capture column definition: name, type (with optional precision), rest (constraints)
+        const col = /^`?([\w\d_]+)`?\s+([A-Za-z]+(?:\s*\([\d,]+\))?)([\s\S]*)$/i.exec(
+          line
+        );
+        if (col) {
+          const [, name, type, rest] = col;
+          const constraints = (rest.match(
+            /NOT NULL|NULL|UNIQUE|PRIMARY KEY|AUTO_INCREMENT|DEFAULT\s+[^ ,)]+/gi
+          ) || []).map((c) => c.trim());
+          columns.push({
+            name,
+            type: type.trim(),
+            constraints: constraints.length ? constraints : undefined,
+          });
+        }
+      });
 
       tables.push({ name: tableName, columns });
     }
 
-    return {
-      tables,
-      relationships,
-    };
+    return { tables, relationships };
+  }
+
+  /**
+   * Splits a CREATE TABLE body on top-level commas,
+   * ignoring commas inside parentheses (e.g. enum or precision lists).
+   */
+  private splitSQLDefinitions(body: string): string[] {
+    const parts: string[] = [];
+    let buffer = "";
+    let depth = 0;
+
+    for (const char of body) {
+      if (char === "(") depth++;
+      if (char === ")") depth--;
+      if (char === "," && depth === 0) {
+        parts.push(buffer);
+        buffer = "";
+      } else {
+        buffer += char;
+      }
+    }
+    if (buffer.trim()) parts.push(buffer);
+    return parts;
   }
 
   private parseJSONSchema(content: string): Schema {
+    let parsed: any;
     try {
-      const parsed = JSON.parse(content);
-      return this.validateSchema(parsed);
-    } catch (error) {
+      parsed = JSON.parse(content);
+    } catch {
       throw new Error("Invalid JSON schema format");
     }
-  }
-
-  private validateSchema(schema: any): Schema {
-    if (!schema.tables || !Array.isArray(schema.tables)) {
-      throw new Error("Invalid schema format: missing tables array");
+    if (!Array.isArray(parsed.tables)) {
+      throw new Error("JSON schema must include a tables array");
     }
 
-    const validatedSchema: Schema = {
-      tables: [],
-      relationships: schema.relationships || [],
-    };
-
-    schema.tables.forEach((table: any) => {
-      if (!table.name || !table.columns || !Array.isArray(table.columns)) {
-        throw new Error("Invalid table format");
+    const tables: Table[] = parsed.tables.map((tbl: any) => {
+      if (typeof tbl.name !== "string" || !Array.isArray(tbl.columns)) {
+        throw new Error("Invalid table definition in JSON schema");
       }
-
-      const validatedTable: Table = {
-        name: table.name,
-        columns: [],
-      };
-
-      table.columns.forEach((column: any) => {
-        if (!column.name || !column.type) {
-          throw new Error("Invalid column format");
+      const cols: Column[] = tbl.columns.map((col: any) => {
+        if (typeof col.name !== "string" || typeof col.type !== "string") {
+          throw new Error("Invalid column definition in JSON schema");
         }
-
-        const validatedColumn: Column = {
-          name: column.name,
-          type: column.type,
-          constraints: column.constraints,
+        return {
+          name: col.name,
+          type: col.type,
+          constraints: Array.isArray(col.constraints)
+            ? col.constraints
+            : undefined,
         };
-
-        validatedTable.columns.push(validatedColumn);
       });
-
-      validatedSchema.tables.push(validatedTable);
+      return { name: tbl.name, columns: cols };
     });
 
-    return validatedSchema;
+    const relationships: Relationship[] = Array.isArray(parsed.relationships)
+      ? parsed.relationships
+          .filter(
+            (rel: any) =>
+              typeof rel.from === "string" &&
+              typeof rel.to === "string" &&
+              typeof rel.type === "string"
+          )
+          .map((rel: any) => ({
+            from: rel.from,
+            to: rel.to,
+            type: rel.type,
+          }))
+      : [];
+
+    return { tables, relationships };
   }
 }

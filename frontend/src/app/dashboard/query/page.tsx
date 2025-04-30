@@ -12,9 +12,9 @@ export default async function QueryPage() {
   const schemas = data.schemas || [];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-4xl w-full bg-white p-8 rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold mb-6 text-indigo-700">
+    <div className="flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full bg-white p-6 rounded-lg shadow">
+        <h1 className="text-xl font-bold mb-4 text-indigo-700">
           Natural Language to SQL
         </h1>
         <QueryInterface schemas={schemas} />
