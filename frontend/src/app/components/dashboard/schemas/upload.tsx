@@ -58,7 +58,8 @@ export default function SchemaUpload() {
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-10 bg-white p-8 rounded-xl shadow-lg">
+    <div className="mt-2
+    bg-white p-8 rounded-xl w-[100%] max-w-[80%] shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-indigo-700">
         Upload Schema File
       </h1>

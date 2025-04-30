@@ -35,15 +35,6 @@ export default function SideBar() {
         >
           Settings
         </Link>
-        <Link
-          href="/dashboard/api-keys"
-          className="hover:underline font-medium"
-        >
-          API Keys
-        </Link>
-        <Link href="/dashboard/help" className="hover:underline font-medium">
-          Help
-        </Link>
         <Link href="/dashboard/query" className="hover:underline font-medium">
           Query
         </Link>

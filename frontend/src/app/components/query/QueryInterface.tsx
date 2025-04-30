@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Schema } from "@/types/schema";
-import QueryResult from "./QueryResult";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface QueryInterfaceProps {
   schemas: Schema[];
@@ -10,110 +14,121 @@ interface QueryInterfaceProps {
 
 export default function QueryInterface({ schemas }: QueryInterfaceProps) {
   const [selectedSchema, setSelectedSchema] = useState<string>("");
-  const [query, setQuery] = useState<string>("");
+  const [input, setInput] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [result, setResult] = useState<string>("");
 
-  const handleQuerySubmit = async (e: React.FormEvent) => {
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // auto‐scroll when new messages appear
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedSchema || !query) {
-      setError("Please select a schema and enter a query");
+    if (!selectedSchema || !input.trim()) {
+      setError("Please select a schema and enter a question.");
       return;
     }
-
-    setIsLoading(true);
+    const question = input.trim();
     setError("");
-    setResult("");
+    setInput("");
+    setMessages(prev => [...prev, { role: "user", content: question }]);
+    setIsLoading(true);
 
     try {
-      const response = await fetch("/api/query", {
+      const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schemaId: selectedSchema, query }),
+        body: JSON.stringify({ schemaId: selectedSchema, query: question }),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate SQL query");
-      }
-
-      const data = await response.json();
-      setResult(data.sqlQuery);
-    } catch (error) {
-      console.error("Frontend API error:", error);
-      setError(error instanceof Error ? error.message : "An error occurred");
+      if (!res.ok) throw new Error("Failed to fetch response");
+      const data = await res.json();
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: data.sqlQuery },
+      ]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "An error occurred";
+      setError(msg);
+      setMessages(prev => [...prev, { role: "assistant", content: msg }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleQuerySubmit} className="space-y-5">
-        <div>
-          <label
-            htmlFor="schema"
-            className="block text-sm font-semibold text-gray-800"
-          >
-            Select Schema
-          </label>
-          <select
-            id="schema"
-            value={selectedSchema}
-            onChange={(e) => setSelectedSchema(e.target.value)}
-            className="mt-1 w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition text-gray-600"
-          >
-            <option value="">Choose a schema</option>
-            {schemas.map((schema) => (
-              <option key={schema._id} value={schema._id}>
-                {schema.filename}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="query"
-            className="block text-sm font-semibold text-gray-800"
-          >
-            Enter Your Question
-          </label>
-          <textarea
-            id="query"
-            rows={4}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="e.g., Show me all customers who made purchases in the last month"
-            className="mt-1 w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg shadow-sm
-                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition text-gray-600"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md
-                     hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                     disabled:opacity-50 transition"
+    <div className="flex flex-col h-[75vh] max-w-xl mx-auto border rounded-lg overflow-auto shadow text-gray-700">
+      {/* Schema selector */}
+      <div className="p-3 bg-gray-100 border-b">
+        <select
+          value={selectedSchema}
+          onChange={(e) => {
+            setSelectedSchema(e.target.value);
+            setMessages([]);
+          }}
+          className="w-40 px-2 py-1 bg-white border rounded focus:outline-none text-sm text-gray-700"
         >
-          {isLoading ? "Generating SQL..." : "Generate SQL"}
-        </button>
+          <option value="">Select Schema</option>
+          {schemas.map((s) => (
+            <option key={s._id} value={s._id}>
+              {s.filename}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Chat history */}
+      <div className="flex-1 p-4 bg-white overflow-auto text-gray-700">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`mb-3 flex ${
+              msg.role === "user" ? "justify-end" : "justify-start"
+            }`}
+          >
+            <div
+              className={`px-4 py-2 rounded-lg max-w-[70%] ${
+                msg.role === "user"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 text-gray-700"
+              }`}
+            >
+              {msg.content}
+            </div>
+          </div>
+        ))}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input box */}
+      <form
+        onSubmit={handleSend}
+        className="p-3 bg-gray-100 border-t text-gray-700"
+      >
+        {error && <div className="text-gray-600 mb-2 text-sm">{error}</div>}
+        <div className="flex">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={!selectedSchema || isLoading}
+            placeholder={
+              selectedSchema ? "Type your question..." : "Select a schema first"
+            }
+            className="flex-1 px-3 py-2 border rounded-l focus:outline-none text-sm text-gray-700 placeholder-gray-500"
+          />
+          <button
+            type="submit"
+            disabled={!selectedSchema || isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-r disabled:opacity-50 text-sm"
+          >
+            {isLoading ? "..." : "Send"}
+          </button>
+        </div>
       </form>
-
-      {error && (
-        <div className="flex items-start space-x-2 border-l-4 border-red-600 bg-red-50 p-4 rounded-md">
-          <span className="text-red-600 font-bold">Error:</span>
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
-
-      {result && (
-        <div className="mt-4 rounded-md border border-green-300 bg-green-50 p-4">
-          <QueryResult sqlQuery={result} />
-        </div>
-      )}
     </div>
   );
 }
