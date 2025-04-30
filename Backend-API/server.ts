@@ -6,13 +6,9 @@ import { connectDB } from "./database/connection";
 import authRoutes from "./routes/auth";
 import schemaRoutes from "./routes/schema";
 import queryRoutes from "./routes/query";
-import { authenticate, isAuthenticatedRequest } from "./middleware/auth";
+import queryHistoryRouter from "./routes/queryHistory";
 import meRouter from "./routes/me";
-import dotenv from "dotenv";
-import queryRouter from "./routes/query";
-
-// Load environment variables
-dotenv.config();
+import { authenticate } from "./middleware/auth";
 
 const app = express();
 
@@ -33,37 +29,21 @@ app.use(
   })
 );
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Root route
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   res.json({ message: "API is running" });
 });
 
 // Auth routes
 app.use("/api/auth", authRoutes);
 
-// Schema routes
+// Protected routes
 app.use("/api/schemas", authenticate, schemaRoutes);
-
-// Query routes
 app.use("/api/query", authenticate, queryRoutes);
-app.use("/query", queryRouter);
-
-// Protected route example
-app.get("/api/me", authenticate, async (req: Request, res: Response) => {
-  try {
-    if (!isAuthenticatedRequest(req)) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    res.json({ user: req.userId?.toString() });
-  } catch (error) {
-    console.error("Error in /me route:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-app.use("/api/me", meRouter);
+app.use("/api/history", authenticate, queryHistoryRouter);
+app.use("/api/me", authenticate, meRouter);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
