@@ -66,16 +66,30 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
 
 // Get all schemas for the authenticated user
 router.get("/", authenticate, async (req: Request, res: Response) => {
+  console.log("Received schema request");
+  console.log("Auth header:", req.headers.authorization);
+
   if (!isAuthenticatedRequest(req)) {
+    console.log("User not authenticated");
     return res.status(401).json({ error: "User not authenticated" });
   }
 
   try {
+    console.log("Fetching schemas for user:", req.userId);
+    console.log("User authenticated, proceeding with query");
+
     const schemas = await SchemaFile.find({ userId: req.userId })
       .select("-content") // Don't send content in list view
       .sort({ updatedAt: -1 });
+
+    console.log("Found schemas count:", schemas.length);
+    console.log("Found schemas:", JSON.stringify(schemas, null, 2));
+
+    // Send response with explicit content type
+    res.setHeader("Content-Type", "application/json");
     res.json(schemas);
   } catch (error) {
+    console.error("Error fetching schemas:", error);
     res.status(500).json({ error: "Failed to fetch schemas" });
   }
 });
