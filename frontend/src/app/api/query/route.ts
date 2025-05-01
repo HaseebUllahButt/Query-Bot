@@ -11,26 +11,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const res = await fetch("http://localhost:5000/query", {
+    const res = await fetch("http://localhost:5000/api/query", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: request.headers.get("Authorization") || "",
+      },
       body: JSON.stringify({ schemaId, query }),
     });
 
-    if (!res.ok) {
-      let errorMsg = "Unknown error";
-      try {
-        const errorData = await res.json();
-        errorMsg = errorData.error || JSON.stringify(errorData);
-      } catch (e) {
-        errorMsg = await res.text();
-      }
-      console.error("Backend error:", errorMsg);
-      return NextResponse.json({ error: errorMsg }, { status: 500 });
-    }
+    // Clone the response before reading it
+    const resClone = res.clone();
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    try {
+      const data = await res.json();
+      return NextResponse.json(data, { status: res.status });
+    } catch (e) {
+      // If JSON parsing fails, try to get the text content from the clone
+      const textContent = await resClone.text();
+      console.error("Response parsing error. Raw response:", textContent);
+      return NextResponse.json(
+        { error: "Invalid response format from backend" },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error("API route error:", error);
     return NextResponse.json(
