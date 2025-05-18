@@ -1,6 +1,7 @@
 export interface Schema {
   tables: Table[];
   relationships: Relationship[];
+  databaseName: string;
 }
 
 export interface Table {
@@ -12,6 +13,7 @@ export interface Column {
   name: string;
   type: string;
   constraints?: string[];
+  isPrimaryKey?: boolean;
 }
 
 export interface Relationship {

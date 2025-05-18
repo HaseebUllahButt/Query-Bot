@@ -1,0 +1,364 @@
+-- MySQL dump 10.13  Distrib 8.0.41, for Linux (x86_64)
+--
+-- Host: localhost    Database: discussit_core_db;
+
+-- ------------------------------------------------------
+-- Server version	8.0.41-0ubuntu0.24.04.1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+CREATE DATABASE IF NOT EXISTS discussit_core_db;
+USE discussit_core_db;
+
+--
+-- Table structure for table `availability`
+--
+
+DROP TABLE IF EXISTS `availability`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `availability` (
+  `availabilityId` int NOT NULL AUTO_INCREMENT,
+  `date` date NOT NULL,
+  `timeSlot` time NOT NULL,
+  `slotStatus` enum('available','booked','canceled') NOT NULL DEFAULT 'available',
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expert_id` int DEFAULT NULL,
+  PRIMARY KEY (`availabilityId`),
+  KEY `FK_1d4d9612c71c8fc408cf64ff0dc` (`expert_id`),
+  CONSTRAINT `FK_1d4d9612c71c8fc408cf64ff0dc` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `contact_us`
+--
+
+DROP TABLE IF EXISTS `contact_us`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `contact_us` (
+  `inquiryId` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `phoneNumber` varchar(20) DEFAULT NULL,
+  `subject` varchar(255) DEFAULT NULL,
+  `message` text NOT NULL,
+  `submittedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`inquiryId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `earnings`
+--
+
+DROP TABLE IF EXISTS `earnings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `earnings` (
+  `earningId` int NOT NULL AUTO_INCREMENT,
+  `amount` decimal(10,2) NOT NULL,
+  `earningStatus` enum('pending','completed') NOT NULL DEFAULT 'pending',
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expert_id` int DEFAULT NULL,
+  `session_id` int DEFAULT NULL,
+  PRIMARY KEY (`earningId`),
+  KEY `FK_aff14d996cca9229f44221f7498` (`expert_id`),
+  KEY `FK_dbce4dca4cfdcb17d1dfce2c0c8` (`session_id`),
+  CONSTRAINT `FK_aff14d996cca9229f44221f7498` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`),
+  CONSTRAINT `FK_dbce4dca4cfdcb17d1dfce2c0c8` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`sessionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `expert_expertise`
+--
+
+DROP TABLE IF EXISTS `expert_expertise`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expert_expertise` (
+  `expertId` int NOT NULL,
+  `topicId` int NOT NULL,
+  `expert_id` int DEFAULT NULL,
+  `topic_id` int DEFAULT NULL,
+  PRIMARY KEY (`expertId`,`topicId`),
+  KEY `FK_f26c0421bd6e62727a2ac49f6b3` (`expert_id`),
+  KEY `FK_7b581a9ece9976fc7ece03b1dff` (`topic_id`),
+  CONSTRAINT `FK_7b581a9ece9976fc7ece03b1dff` FOREIGN KEY (`topic_id`) REFERENCES `expertise_topics` (`topicId`),
+  CONSTRAINT `FK_f26c0421bd6e62727a2ac49f6b3` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `expert_skills`
+--
+
+DROP TABLE IF EXISTS `expert_skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expert_skills` (
+  `expertId` int NOT NULL,
+  `skillId` int NOT NULL,
+  `expert_id` int DEFAULT NULL,
+  `skill_id` int DEFAULT NULL,
+  PRIMARY KEY (`expertId`,`skillId`),
+  KEY `FK_3da4cf91125f0864d5d4a37515e` (`expert_id`),
+  KEY `FK_15ae91d60db03b152e21ed81c73` (`skill_id`),
+  CONSTRAINT `FK_15ae91d60db03b152e21ed81c73` FOREIGN KEY (`skill_id`) REFERENCES `skills` (`skillId`),
+  CONSTRAINT `FK_3da4cf91125f0864d5d4a37515e` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `expertise_categories`
+--
+
+DROP TABLE IF EXISTS `expertise_categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expertise_categories` (
+  `categoryId` int NOT NULL AUTO_INCREMENT,
+  `categoryName` varchar(100) NOT NULL,
+  PRIMARY KEY (`categoryId`),
+  UNIQUE KEY `IDX_3bb4ae9768a12f4b289fa7f026` (`categoryName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `expertise_topics`
+--
+
+DROP TABLE IF EXISTS `expertise_topics`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `expertise_topics` (
+  `topicId` int NOT NULL AUTO_INCREMENT,
+  `topicName` varchar(100) NOT NULL,
+  `category_id` int DEFAULT NULL,
+  PRIMARY KEY (`topicId`),
+  UNIQUE KEY `IDX_topic_category` (`topicName`, `category_id`),
+  KEY `FK_4ec378dcdff8f6bfbdd600cfc27` (`category_id`),
+  CONSTRAINT `FK_4ec378dcdff8f6bfbdd600cfc27` FOREIGN KEY (`category_id`) REFERENCES `expertise_categories` (`categoryId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `experts`
+--
+
+DROP TABLE IF EXISTS `experts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `experts` (
+  `expertId` int NOT NULL AUTO_INCREMENT,
+  `email` varchar(255) NOT NULL,
+  `briefDescription` varchar(255) DEFAULT NULL,
+  `fullDescription` text,
+  `hourlyRate` decimal(10,2) NOT NULL,
+  `iban` varchar(50) DEFAULT NULL,
+  `accountHolder` varchar(50) DEFAULT NULL,
+  `routingNumber` varchar(50) DEFAULT NULL,
+  `profileImageUrl` varchar(255) DEFAULT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`expertId`),
+  UNIQUE KEY `REL_714c375ea5ea46e2d0c7c23ccd` (`email`),
+  CONSTRAINT `FK_714c375ea5ea46e2d0c7c23ccda` FOREIGN KEY (`email`) REFERENCES `users` (`email`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `feedback`
+--
+
+DROP TABLE IF EXISTS `feedback`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `feedback` (
+  `feedbackId` int NOT NULL AUTO_INCREMENT,
+  `rating` decimal(2,1) NOT NULL DEFAULT '0.0',
+  `review` text NOT NULL,
+  `experienceType` text NOT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `session_id` int DEFAULT NULL,
+  `expert_id` int DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`feedbackId`),
+  KEY `FK_e5bfaf86ab81e5ce5c1b54559d7` (`session_id`),
+  KEY `FK_e2c27e804420ee0e79dbd4126f4` (`expert_id`),
+  KEY `FK_05296e7e2ab31cc31d1adb30a68` (`email`),
+  CONSTRAINT `FK_05296e7e2ab31cc31d1adb30a68` FOREIGN KEY (`email`) REFERENCES `users` (`email`),
+  CONSTRAINT `FK_e2c27e804420ee0e79dbd4126f4` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`),
+  CONSTRAINT `FK_e5bfaf86ab81e5ce5c1b54559d7` FOREIGN KEY (`session_id`) REFERENCES `sessions` (`sessionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `locations`
+--
+
+DROP TABLE IF EXISTS `locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `locations` (
+  `locationId` int NOT NULL AUTO_INCREMENT,
+  `country` varchar(50) NOT NULL,
+  `state` varchar(50) DEFAULT NULL,
+  `city` varchar(50) DEFAULT NULL,
+  `countryCode` varchar(5) DEFAULT NULL,
+  `timeZone` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`locationId`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `sessions`
+--
+
+DROP TABLE IF EXISTS `sessions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sessions` (
+  `sessionId` int NOT NULL AUTO_INCREMENT,
+  `sessionDate` date NOT NULL,
+  `sessionTime` time NOT NULL,
+  `duration` enum('30 min','60 min') NOT NULL,
+  `price` decimal(10,2) NOT NULL,
+  `sessionStatus` enum('scheduled','completed','canceled') NOT NULL DEFAULT 'scheduled',
+  `additionalNotes` text,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expert_id` int DEFAULT NULL,
+  `meetingLink` varchar(255) DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`sessionId`),
+  KEY `FK_39961dc1d774eb32f954a38133c` (`expert_id`),
+  KEY `FK_716dd94e29fe065f4a9654d1a3d` (`email`),
+  CONSTRAINT `FK_39961dc1d774eb32f954a38133c` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`),
+  CONSTRAINT `FK_716dd94e29fe065f4a9654d1a3d` FOREIGN KEY (`email`) REFERENCES `users` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `skills`
+--
+
+DROP TABLE IF EXISTS `skills`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `skills` (
+  `skillId` int NOT NULL AUTO_INCREMENT,
+  `skillName` varchar(100) NOT NULL,
+  PRIMARY KEY (`skillId`),
+  UNIQUE KEY `IDX_3d2a4a776c97f397a96c8e1e7d` (`skillName`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `testimonials`
+--
+
+DROP TABLE IF EXISTS `testimonials`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `testimonials` (
+  `testimonialId` int NOT NULL AUTO_INCREMENT,
+  `review` text NOT NULL,
+  `reviewerName` varchar(100) DEFAULT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `expert_id` int DEFAULT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`testimonialId`),
+  KEY `FK_99669f886561d6807eb3f771af5` (`expert_id`),
+  KEY `FK_a8303ae53b9825518d4858d0d2c` (`email`),
+  CONSTRAINT `FK_99669f886561d6807eb3f771af5` FOREIGN KEY (`expert_id`) REFERENCES `experts` (`expertId`),
+  CONSTRAINT `FK_a8303ae53b9825518d4858d0d2c` FOREIGN KEY (`email`) REFERENCES `users` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tokens`
+--
+
+DROP TABLE IF EXISTS `tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tokens` (
+  `token` varchar(512) NOT NULL,
+  `tokenType` enum('password_reset','email_verification','phone_verification','REGISTRATION_TEMP_DATA') NOT NULL,
+  `code` varchar(10) DEFAULT NULL,
+  `registrationData` text,
+  `expiresAt` timestamp NOT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `isUsed` tinyint NOT NULL DEFAULT '0',
+  `email` varchar(100) DEFAULT NULL,
+  PRIMARY KEY (`token`),
+  KEY `FK_d60a53f7fd2e12866a82a02a9f4` (`email`),
+  CONSTRAINT `FK_d60a53f7fd2e12866a82a02a9f4` FOREIGN KEY (`email`) REFERENCES `users` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_locations`
+--
+
+DROP TABLE IF EXISTS `user_locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_locations` (
+  `email` varchar(255) NOT NULL,
+  `locationId` int NOT NULL,
+  `location_id` int DEFAULT NULL,
+  PRIMARY KEY (`email`,`locationId`),
+  KEY `FK_3f495c9a559977dbbc1901a143e` (`location_id`),
+  CONSTRAINT `FK_008e5d2809cd73f0c7d23bc7325` FOREIGN KEY (`email`) REFERENCES `users` (`email`),
+  CONSTRAINT `FK_3f495c9a559977dbbc1901a143e` FOREIGN KEY (`location_id`) REFERENCES `locations` (`locationId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `email` varchar(100) NOT NULL,
+  `role` enum('member','expert') NOT NULL,
+  `firstName` varchar(50) NOT NULL,
+  `lastName` varchar(50) NOT NULL,
+  `phoneNumber` varchar(20) DEFAULT NULL,
+  `phoneVerified` tinyint NOT NULL DEFAULT '0',
+  `emailVerified` tinyint NOT NULL DEFAULT '0',
+  `passwordHash` varchar(255) NOT NULL,
+  `profileImageUrl` varchar(255) DEFAULT NULL,
+  `creditCardToken` varchar(255) DEFAULT NULL,
+  `methodOfPayment` varchar(20) DEFAULT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `location_id` int DEFAULT NULL,
+  PRIMARY KEY (`email`),
+  KEY `FK_1523fb2aebce55b9e820122ee0e` (`location_id`),
+  CONSTRAINT `FK_1523fb2aebce55b9e820122ee0e` FOREIGN KEY (`location_id`) REFERENCES `locations` (`locationId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-05-05  8:32:32
