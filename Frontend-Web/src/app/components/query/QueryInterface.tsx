@@ -6,6 +6,7 @@ import { Schema } from "@/types/schema";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  queryStatus?: "pending" | "success" | "error";
 }
 
 interface QueryHistory {
@@ -14,13 +15,192 @@ interface QueryHistory {
   timestamp: Date;
 }
 
+type HistoryViewMode = {
+  type: "chat" | "history";
+};
+
+interface ConnectionPopupProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConnect: (username: string, password: string, port: string) => void;
+}
+
+const ConnectionPopup = ({
+  isOpen,
+  onClose,
+  onConnect,
+}: ConnectionPopupProps) => {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [port, setPort] = useState("3306");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onConnect(username, password, port);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h2 className="text-xl font-bold mb-4">Connect to MySQL</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Port</label>
+            <input
+              type="text"
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+              className="w-full p-2 border rounded"
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            >
+              Connect
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 interface QueryInterfaceProps {
   schemas: Schema[];
 }
 
-interface HistoryViewMode {
-  type: "chat" | "history";
-}
+const RunButton = ({
+  query,
+  onRun,
+  status,
+}: {
+  query: string;
+  onRun: (query: string) => void;
+  status?: "pending" | "success" | "error";
+}) => {
+  const getButtonStyle = () => {
+    if (status === "success") return "bg-green-500 cursor-not-allowed";
+    if (status === "error") return "bg-red-500 cursor-not-allowed";
+    if (status === "pending") return "bg-gray-500 cursor-not-allowed";
+    return "bg-blue-500 hover:bg-blue-600";
+  };
+
+  return (
+    <button
+      onClick={() => onRun(query)}
+      disabled={status !== undefined}
+      className={`mt-2 w-8 h-8 rounded-full flex items-center justify-center text-white ${getButtonStyle()}`}
+      title={
+        status === "pending"
+          ? "Running..."
+          : status === "success"
+          ? "Success"
+          : status === "error"
+          ? "Error"
+          : "Run Query"
+      }
+    >
+      {status === "pending" ? (
+        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      ) : status === "success" ? (
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      ) : status === "error" ? (
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      ) : (
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      )}
+    </button>
+  );
+};
 
 export default function QueryInterface({ schemas }: QueryInterfaceProps) {
   const [selectedSchema, setSelectedSchema] = useState<string>("");
@@ -30,6 +210,14 @@ export default function QueryInterface({ schemas }: QueryInterfaceProps) {
   const [error, setError] = useState<string>("");
   const [history, setHistory] = useState<QueryHistory[]>([]);
   const [viewMode, setViewMode] = useState<HistoryViewMode["type"]>("chat");
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "disconnected" | "connecting" | "connected" | "error"
+  >("disconnected");
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [queryStatuses, setQueryStatuses] = useState<{
+    [key: number]: "pending" | "success" | "error";
+  }>({});
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -146,6 +334,100 @@ export default function QueryInterface({ schemas }: QueryInterfaceProps) {
     }
   };
 
+  const handleConnect = async (
+    username: string,
+    password: string,
+    port: string
+  ) => {
+    setIsPopupOpen(false);
+    setConnectionStatus("connecting");
+
+    try {
+      const ws = new WebSocket("ws://localhost:7878");
+
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            type: "handshake",
+            username,
+            password,
+            port,
+          })
+        );
+      };
+
+      ws.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+        if (response.status === "success") {
+          setConnectionStatus("connected");
+          setWs(ws);
+        } else {
+          setConnectionStatus("error");
+          ws.close();
+        }
+      };
+
+      ws.onerror = () => {
+        setConnectionStatus("error");
+        ws.close();
+      };
+
+      ws.onclose = () => {
+        if (connectionStatus === "connecting") {
+          setConnectionStatus("error");
+        }
+      };
+    } catch (error) {
+      console.error("WebSocket connection error:", error);
+      setConnectionStatus("error");
+    }
+  };
+
+  const handleRunQuery = async (query: string, messageIndex: number) => {
+    if (!ws || connectionStatus !== "connected") return;
+
+    setQueryStatuses((prev) => ({ ...prev, [messageIndex]: "pending" }));
+
+    try {
+      ws.send(
+        JSON.stringify({
+          type: "query",
+          query: query,
+        })
+      );
+    } catch (error) {
+      console.error("Error sending query:", error);
+      setQueryStatuses((prev) => ({ ...prev, [messageIndex]: "error" }));
+    }
+  };
+
+  // Update WebSocket message handler
+  useEffect(() => {
+    if (ws) {
+      ws.onmessage = (event) => {
+        const response = JSON.parse(event.data);
+        if (response.status === "success") {
+          // Find the last assistant message and update its status
+          const lastAssistantIndex = [...messages]
+            .reverse()
+            .findIndex((m) => m.role === "assistant");
+          if (lastAssistantIndex !== -1) {
+            const actualIndex = messages.length - 1 - lastAssistantIndex;
+            setQueryStatuses((prev) => ({ ...prev, [actualIndex]: "success" }));
+          }
+        } else if (response.status === "error") {
+          const lastAssistantIndex = [...messages]
+            .reverse()
+            .findIndex((m) => m.role === "assistant");
+          if (lastAssistantIndex !== -1) {
+            const actualIndex = messages.length - 1 - lastAssistantIndex;
+            setQueryStatuses((prev) => ({ ...prev, [actualIndex]: "error" }));
+          }
+        }
+      };
+    }
+  }, [ws, messages]);
+
   return (
     <div className="flex flex-col h-[75vh] max-w-xl mx-auto border rounded-lg overflow-auto shadow text-gray-700">
       {/* Schema selector */}
@@ -201,6 +483,14 @@ export default function QueryInterface({ schemas }: QueryInterfaceProps) {
                 }`}
               >
                 {msg.content}
+                {msg.role === "assistant" &&
+                  connectionStatus === "connected" && (
+                    <RunButton
+                      query={msg.content}
+                      onRun={(query) => handleRunQuery(query, idx)}
+                      status={queryStatuses[idx]}
+                    />
+                  )}
               </div>
             </div>
           ))}
@@ -252,6 +542,37 @@ export default function QueryInterface({ schemas }: QueryInterfaceProps) {
           </button>
         </div>
       </form>
+
+      <div className="mb-4">
+        <button
+          onClick={() => setIsPopupOpen(true)}
+          className="px-4 ml-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+        >
+          Connect to Computer
+        </button>
+        <span className="ml-4">
+          Status:
+          <span
+            className={`ml-2 ${
+              connectionStatus === "connected"
+                ? "text-green-600"
+                : connectionStatus === "error"
+                ? "text-red-600"
+                : connectionStatus === "connecting"
+                ? "text-yellow-600"
+                : "text-gray-600"
+            }`}
+          >
+            {connectionStatus.charAt(0).toUpperCase() +
+              connectionStatus.slice(1)}
+          </span>
+        </span>
+      </div>
+      <ConnectionPopup
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+        onConnect={handleConnect}
+      />
     </div>
   );
 }
