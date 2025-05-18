@@ -51,6 +51,7 @@ ${schemaDescription}
 Instructions:
 - You MUST use the database name "${schema.databaseName}" in your query.
 - Always start your SQL query with "USE ${schema.databaseName};"
+- Support all CRUD operations (SELECT, INSERT, UPDATE, DELETE) and DDL operations (CREATE, ALTER, DROP)
 - Always use the most semantically relevant column for the user's question (e.g., use 'username' for user name queries, not 'user_id').
 - If the user asks for a name, prefer columns like 'username', 'first_name', or 'last_name' over IDs.
 - Do not use ID columns unless the question specifically asks for an ID.
@@ -63,6 +64,10 @@ Instructions:
 - The query should be a complete, valid SQL statement.
 - Never include phrases like "I am unable to" or "I cannot" in your response.
 - Never include comments or additional text outside the JSON structure.
+- For ALTER TABLE operations, provide the complete ALTER TABLE statement.
+- For INSERT operations, include all necessary columns and values.
+- For UPDATE operations, specify the SET clause with all columns to be updated.
+- For DELETE operations, include appropriate WHERE clauses to ensure data safety.
 
 Natural Language Query: "${query}"
 `;
