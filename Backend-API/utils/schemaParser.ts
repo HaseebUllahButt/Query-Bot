@@ -1,8 +1,9 @@
- // Start of Selection
+// Start of Selection
 import { Schema, Table, Column, Relationship } from "../types/schema";
 
 export class SchemaParser {
   async parseSchema(schemaContent: string): Promise<Schema> {
+    console.log("schemaContent", schemaContent);
     // Quick JSON check by trimming and looking for object/array start
     const trimmed = schemaContent.trim();
     if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
@@ -15,9 +16,22 @@ export class SchemaParser {
     const tables: Table[] = [];
     const relationships: Relationship[] = [];
 
+    // First try to find database name in comment format
+    const commentDbMatch = /--\s*Host:.*Database:\s*([\w\d_]+)/i.exec(content);
+    // Then try direct USE or CREATE DATABASE statements
+    const directDbMatch = /^(?:USE|CREATE\s+DATABASE)\s+`?([\w\d_]+)`?/im.exec(
+      content
+    );
+
+    const databaseName = commentDbMatch
+      ? commentDbMatch[1]
+      : directDbMatch
+      ? directDbMatch[1]
+      : "default";
+
     // Match CREATE TABLE statements with everything inside parentheses
     const createTableRegex =
-      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"]?([\w\d_]+)[`"]?\s*\(([\s\S]*?)\)\s*;/gi;
+      /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([\w\d_]+)`?\s*\(([\s\S]*?)\)\s*(?:ENGINE=|$)/gi;
     let tableMatch: RegExpExecArray | null;
 
     while ((tableMatch = createTableRegex.exec(content)) !== null) {
@@ -29,10 +43,14 @@ export class SchemaParser {
       defs.forEach((def) => {
         const line = def.trim();
 
+        // Skip empty lines
+        if (!line) return;
+
         // Capture table-level foreign keys
-        const fk = /FOREIGN\s+KEY\s*\([`"]?([\w\d_]+)[`"]?\)\s+REFERENCES\s+[`"]?([\w\d_]+)[`"]?\s*\([`"]?([\w\d_]+)[`"]?\)/i.exec(
-          line
-        );
+        const fk =
+          /FOREIGN\s+KEY\s*\(`?([\w\d_]+)`?\)\s+REFERENCES\s+`?([\w\d_]+)`?\s*\(`?([\w\d_]+)`?\)/i.exec(
+            line
+          );
         if (fk) {
           relationships.push({
             from: `${tableName}.${fk[1]}`,
@@ -43,26 +61,42 @@ export class SchemaParser {
         }
 
         // Capture column definition: name, type (with optional precision), rest (constraints)
-        const col = /^`?([\w\d_]+)`?\s+([A-Za-z]+(?:\s*\([\d,]+\))?)([\s\S]*)$/i.exec(
-          line
-        );
+        const col =
+          /^`?([\w\d_]+)`?\s+([A-Za-z]+(?:\s*\([\d,]+\))?)([\s\S]*)$/i.exec(
+            line
+          );
         if (col) {
           const [, name, type, rest] = col;
-          const constraints = (rest.match(
-            /NOT NULL|NULL|UNIQUE|PRIMARY KEY|AUTO_INCREMENT|DEFAULT\s+[^ ,)]+/gi
-          ) || []).map((c) => c.trim());
-          columns.push({
-            name,
-            type: type.trim(),
-            constraints: constraints.length ? constraints : undefined,
-          });
+          const constraints = (
+            rest.match(
+              /NOT NULL|NULL|UNIQUE|PRIMARY KEY|AUTO_INCREMENT|DEFAULT\s+[^ ,)]+/gi
+            ) || []
+          ).map((c) => c.trim());
+
+          // Add PRIMARY KEY constraint if it's in the constraints list
+          if (constraints.includes("PRIMARY KEY")) {
+            columns.push({
+              name,
+              type: type.trim(),
+              constraints: constraints.length ? constraints : undefined,
+              isPrimaryKey: true,
+            });
+          } else {
+            columns.push({
+              name,
+              type: type.trim(),
+              constraints: constraints.length ? constraints : undefined,
+            });
+          }
         }
       });
 
-      tables.push({ name: tableName, columns });
+      if (columns.length > 0) {
+        tables.push({ name: tableName, columns });
+      }
     }
 
-    return { tables, relationships };
+    return { tables, relationships, databaseName };
   }
 
   /**
@@ -99,6 +133,8 @@ export class SchemaParser {
       throw new Error("JSON schema must include a tables array");
     }
 
+    const databaseName = parsed.databaseName || "default";
+
     const tables: Table[] = parsed.tables.map((tbl: any) => {
       if (typeof tbl.name !== "string" || !Array.isArray(tbl.columns)) {
         throw new Error("Invalid table definition in JSON schema");
@@ -133,6 +169,6 @@ export class SchemaParser {
           }))
       : [];
 
-    return { tables, relationships };
+    return { tables, relationships, databaseName };
   }
 }

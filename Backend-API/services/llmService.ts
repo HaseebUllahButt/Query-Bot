@@ -20,21 +20,20 @@ export class GeminiService {
       const response = await result.response;
       const text = response.text();
 
-      // Extract SQL query from the response
-      // If the AI reply doesn’t include the ```sql ... ``` wrapper, sqlMatch will be null
-      // and we throw "No SQL query found in the response" below.
-      const sqlMatch = text.match(/```sql\n([\s\S]*?)\n```/);
-      if (!sqlMatch) {
-        // This error bubbles up into the catch block and becomes the generic failure message.
-        throw new Error("No SQL query found in the response");
+      try {
+        // Remove markdown code block syntax if present
+        const cleanText = text.replace(/```json\n?|\n?```/g, "").trim();
+        console.log("cleanText", cleanText);
+        const jsonResponse = JSON.parse(cleanText);
+        if (!jsonResponse.query || !jsonResponse.explanation) {
+          throw new Error("Invalid response format");
+        }
+        return jsonResponse.query;
+      } catch (parseError) {
+        console.error("Error parsing JSON response:", parseError);
+        throw new Error("Invalid response format from AI");
       }
-
-      return sqlMatch[1].trim();
     } catch (error) {
-      // At this point (around line 32 in your file), any error raised above—
-      // whether from a network failure, invalid API key, or the missing SQL tags
-      // regex match—will be caught here. We log the original error for debugging,
-      // but then throw a new, generic Error("Failed to generate SQL query").
       console.error("Error generating SQL:", error);
       throw new Error("Failed to generate SQL query");
     }
@@ -43,18 +42,27 @@ export class GeminiService {
   private buildPrompt(schema: Schema, query: string): string {
     const schemaDescription = this.formatSchema(schema);
 
-    return `You are a SQL expert. Given the following database schema and a natural language query, generate a valid SQL query. Make your responses like you're a human assistant
+    return `You are a SQL expert. Given the following database schema and a natural language query, generate a valid SQL query.
 
+Database Name: ${schema.databaseName}
 Database Schema:
 ${schemaDescription}
 
 Instructions:
+- You MUST use the database name "${schema.databaseName}" in your query.
+- Always start your SQL query with "USE ${schema.databaseName};"
 - Always use the most semantically relevant column for the user's question (e.g., use 'username' for user name queries, not 'user_id').
 - If the user asks for a name, prefer columns like 'username', 'first_name', or 'last_name' over IDs.
 - Do not use ID columns unless the question specifically asks for an ID.
-- if there isnt a relevant colum with that exact name for eg: a user asks for person named "harold" but we only have customers you use the most suitable column in this case customers.
-- Return only the SQL query wrapped in \`\`\`sql tags. Do not include any explanations or additional text. 
 - If there isn't a relevant column with the exact name (e.g., a user asks for a person named "harold" but we only have 'customers'), use the most suitable column instead.
+- Return your response in the following JSON format:
+{
+  "explanation": "Brief explanation of what the query does",
+  "query": "Your SQL query here"
+}
+- The query should be a complete, valid SQL statement.
+- Never include phrases like "I am unable to" or "I cannot" in your response.
+- Never include comments or additional text outside the JSON structure.
 
 Natural Language Query: "${query}"
 `;
