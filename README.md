@@ -82,7 +82,7 @@ Query-Bot is a full-stack application that bridges the gap between natural langu
 
 ### Query Execution
 - **Language:** Python 3.x
-- **Framework:** FastAPI (implied from structure)
+- **Framework:** FastAPI 
 - **Database Drivers:** psycopg2 (PostgreSQL)
 
 ---
@@ -128,7 +128,7 @@ Query-Bot is a full-stack application that bridges the gap between natural langu
 
 #### 1. Clone Repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/HaseebUllahButt/Query-Bot.git
 cd QueryBot
 ```
 
@@ -418,7 +418,6 @@ Contributions welcome! Please:
 
 For issues or questions:
 - Open an GitHub issue
-- Contact: support@querybot.dev
 
 ---
 
